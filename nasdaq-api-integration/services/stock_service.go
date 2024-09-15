@@ -1,20 +1,20 @@
 package services
 
-import {
+import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"nasdaq-api-integration/config"
-}
+	"net/http"
+)
+
 type StockData struct {
 	Dataset struct {
-		Ticker      string        `json:"dataset_code"`
-		Name        string        `json:"name"`
+		Ticker      string          `json:"dataset_code"`
+		Name        string          `json:"name"`
 		Data        [][]interface{} `json:"data"`
-		ColumnNames []string      `json:"column_names"`
+		ColumnNames []string        `json:"column_names"`
 	} `json:"dataset"`
 }
-
 
 func FetchStockData(symbol string) (*StockData, error) {
 	apiURL := fmt.Sprintf("https://data.nasdaq.com/api/v3/datasets/WIKI/%s.json?api_key=%s", symbol, config.ApiKey)
