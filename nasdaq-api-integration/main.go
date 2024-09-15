@@ -1,63 +1,46 @@
 package main
 
 import (
-    "encoding/json"
-    "fmt"
-    "log"
-    "net/http"
+	"fmt"
+	"log"
+	"nasdaq-api-integration/config"
+	"nasdaq-api-integration/services"
 
-    "github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2"
 )
 
-
-type StockData struct {
-    Dataset struct {
-        Ticker   string    `json:"dataset_code"`
-        Name     string    `json:"name"`
-        Data     [][]interface{} `json:"data"`
-        ColumnNames []string  `json:"column_names"`
-    } `json:"dataset"`
-}
-const apiKey = "YOUR_API_KEY"
-const apiURL = "https://data.nasdaq.com/api/v3/datasets/WIKI/%s.json?api_key=" + apiKey
-
 func main() {
-    
-    app := fiber.New()
+	// Load API config (Nasdaq API key)
+	err := config.LoadConfig()
+	if err != nil {
+		fmt.Println("Error loading config:", err)
+		return
+	}
 
-    
-    app.Get("/stock/:symbol", func(c *fiber.Ctx) error {
-        symbol := c.Params("symbol")
+	
+	app := fiber.New()
 
-        
-        stockData, err := fetchStockData(symbol)
-        if err != nil {
-            return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
-        }
+	
+	app.Get("/stock/:symbol", func(c *fiber.Ctx) error {
+		symbol := c.Params("symbol")
+		stockData, err := services.FetchStockData(symbol)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		}
+		return c.JSON(stockData)
+	})
 
-        return c.JSON(stockData)
-    })
+	
+	app.Get("/exchange/:currency", func(c *fiber.Ctx) error {
+		currency := c.Params("currency")
+		rate, err := services.GetExchangeRate(currency)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+		}
+		return c.JSON(fiber.Map{"currency": currency, "rate": rate})
+	})
 
-    
-    log.Fatal(app.Listen(":3000"))
+	// Start the app
+	log.Fatal(app.Listen(":3000"))
 }
-
-
-func fetchStockData(symbol string) (*StockData, error) {
-    url := fmt.Sprintf(apiURL, symbol)
-
-    
-    resp, err := http.Get(url)
-    if err != nil {
-        return nil, err
-    }
-    defer resp.Body.Close()
-
-    
-    var stockData StockData
-    if err := json.NewDecoder(resp.Body).Decode(&stockData); err != nil {
-        return nil, err
-    }
-
-    return &stockData, nil
-}
+	
