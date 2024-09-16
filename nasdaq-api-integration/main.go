@@ -3,44 +3,36 @@ package main
 import (
 	"fmt"
 	"log"
-	"nasdaq-api-integration/config"
-	"nasdaq-api-integration/services"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+
+	"nasdaq-integration/models"
 )
 
-func main() {
-	// Load API config (Nasdaq API key)
-	err := config.LoadConfig()
+var DB *gorm.DB
+
+func initDatabase() {
+	dsn := "host=localhost user=postgres password=your_password dbname=your_db port=5432 sslmode=disable"
+	var err error
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		fmt.Println("Error loading config:", err)
-		return
+		log.Fatal("Failed to connect to database!", err)
 	}
 
-	
+	DB.AutoMigrate(&models.Customer{}, &models.Payment{})
+	fmt.Println("Database connected successfully!")
+}
+
+func main() {
 	app := fiber.New()
 
-	
-	app.Get("/stock/:symbol", func(c *fiber.Ctx) error {
-		symbol := c.Params("symbol")
-		stockData, err := services.FetchStockData(symbol)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
-		}
-		return c.JSON(stockData)
-	})
+	initDatabase()
 
-	
-	app.Get("/exchange/:currency", func(c *fiber.Ctx) error {
-		currency := c.Params("currency")
-		rate, err := services.GetExchangeRate(currency)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
-		}
-		return c.JSON(fiber.Map{"currency": currency, "rate": rate})
-	})
+	registerNasdaqRoutes(app)
+	registerPaymentRoutes(app)
+	registerCustomerRoutes(app)
 
-	// Start the app
 	log.Fatal(app.Listen(":3000"))
 }
-	
